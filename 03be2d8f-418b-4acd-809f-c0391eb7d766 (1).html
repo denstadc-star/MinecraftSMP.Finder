@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <base target="_self">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMP Finder - Discover Minecraft Servers</title>
+    <meta name="description" content="Find and upload Minecraft SMP servers. Browse survival multiplayer servers with advanced filters.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #e2e8f0;
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+        }
+        
+        .modal {
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .modal.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal-content {
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+        }
+        
+        .modal.active .modal-content {
+            transform: scale(1);
+        }
+        
+        .tag-checkbox:checked + label {
+            background-color: #3b82f6;
+            border-color: #3b82f6;
+            color: white;
+        }
+        
+        .age-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .age-e { background-color: #10b981; color: white; }
+        .age-teen { background-color: #f59e0b; color: white; }
+        .age-mature { background-color: #ef4444; color: white; }
+        
+        .upload-preview {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 0.5rem;
+            border: 2px dashed #475569;
+        }
+        
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        .age-restricted-blur {
+            filter: blur(8px);
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-900">
+
+    <!-- Navigation -->
+    <nav class="bg-slate-800/50 backdrop-blur-md border-b border-slate-700 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center gap-3 cursor-pointer" onclick="window.scrollTo(0,0)">
+                    <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-cube text-white text-xl"></i>
+                    </div>
+                    <span class="text-xl font-bold text-white">SMP<span class="text-blue-400">Finder</span></span>
+                </div>
+                
+                <div class="hidden md:flex items-center gap-6" id="nav-links">
+                    <!-- Populated by JS -->
+                </div>
+                
+                <div class="flex items-center gap-4" id="auth-section">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Age Warning Banner (shown when under 18) -->
+    <div id="age-warning-banner" class="hidden bg-yellow-900/30 border-b border-yellow-700/50 px-4 py-2">
+        <div class="max-w-7xl mx-auto flex items-center justify-center gap-2 text-sm text-yellow-200">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span>Some content is hidden due to age restrictions. You must be 18+ to view mature servers.</span>
+        </div>
+    </div>
+
+    <!-- Hero Section -->
+    <section class="relative overflow-hidden pt-20 pb-16">
+        <div class="absolute inset-0 bg-gradient-to-b from-blue-900/20 to-transparent"></div>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+            <div class="text-center max-w-3xl mx-auto">
+                <h1 class="text-5xl md:text-6xl font-bold mb-6 leading-tight">
+                    Find Your Perfect <span class="gradient-text">Minecraft SMP</span>
+                </h1>
+                <p class="text-xl text-slate-400 mb-8">
+                    Join thousands of players discovering survival multiplayer servers. Upload your own SMP or find the perfect community to call home.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                    <button onclick="openModal('upload-modal')" id="hero-upload-btn" class="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition flex items-center justify-center gap-2">
+                        <i class="fas fa-upload"></i>
+                        Upload Your SMP
+                    </button>
+                    <button onclick="scrollToBrowse()" class="px-8 py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-semibold transition flex items-center justify-center gap-2">
+                        <i class="fas fa-search"></i>
+                        Browse Servers
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Search & Filters -->
+    <section id="browse-section" class="py-12 bg-slate-800/30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col lg:flex-row gap-6 mb-8">
+                <!-- Search Bar -->
+                <div class="flex-1 relative">
+                    <input type="text" id="search-input" placeholder="Search SMPs by name, description, or tags..." 
+                           class="w-full pl-12 pr-4 py-4 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                </div>
+                
+                <!-- Age Filter -->
+                <div class="flex gap-2" id="age-filters">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+            
+            <!-- Tags Filter -->
+            <div class="flex flex-wrap gap-3 mb-6" id="tag-filters">
+                <!-- Populated by JS -->
+            </div>
+            
+            <!-- Results Count -->
+            <div class="flex justify-between items-center mb-6">
+                <p class="text-slate-400" id="results-count">Showing all SMPs</p>
+                <div class="flex gap-2">
+                    <select id="sort-select" class="bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500">
+                        <option value="newest">Newest First</option>
+                        <option value="oldest">Oldest First</option>
+                        <option value="players">Most Players</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- SMP Grid -->
+            <div id="smp-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Populated by JS -->
+            </div>
+            
+            <!-- Empty State -->
+            <div id="empty-state" class="hidden text-center py-20">
+                <div class="w-24 h-24 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-cube text-4xl text-slate-600"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-white mb-2">No SMPs found</h3>
+                <p class="text-slate-400">Try adjusting your filters or search terms</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Upload Modal -->
+    <div id="upload-modal" class="modal fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div class="modal-content bg-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-700">
+            <div class="p-6 border-b border-slate-700 flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-white">Upload Your SMP</h2>
+                <button onclick="closeModal('upload-modal')" class="text-slate-400 hover:text-white transition">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <form id="upload-form" class="p-6 space-y-6">
+                <!-- Image Upload -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">SMP Icon</label>
+                    <div class="relative">
+                        <input type="file" id="smp-image" accept="image/*" class="hidden" onchange="handleImagePreview(this)">
+                        <label for="smp-image" class="cursor-pointer block">
+                            <img id="image-preview" src="https://picsum.photos/400/200?random=0" class="upload-preview" alt="Upload preview">
+                            <div class="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg opacity-0 hover:opacity-100 transition">
+                                <span class="text-white font-medium"><i class="fas fa-camera mr-2"></i>Choose Image</span>
+                            </div>
+                        </label>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-2">Images are automatically checked for inappropriate content</p>
+                    <div id="moderation-status" class="hidden mt-2 flex items-center gap-2 text-sm"></div>
+                </div>
+                
+                <!-- SMP Name -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">SMP Name *</label>
+                    <input type="text" id="smp-name" required maxlength="50"
+                           class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                           placeholder="Enter your SMP name">
+                </div>
+                
+                <!-- Description -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Description *</label>
+                    <textarea id="smp-description" required rows="4" maxlength="500"
+                              class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500 resize-none"
+                              placeholder="Describe your SMP, rules, features, and what makes it special..."></textarea>
+                    <p class="text-xs text-slate-500 mt-1 text-right" id="char-count">0/500</p>
+                </div>
+                
+                <!-- Age Rating -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-3">Age Requirement *</label>
+                    <div class="grid grid-cols-3 gap-3" id="age-options">
+                        <!-- Populated by JS -->
+                    </div>
+                    <p class="text-xs text-slate-500 mt-2" id="age-hint">Select the minimum age requirement for your server</p>
+                </div>
+                
+                <!-- Tags -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-3">Tags (Select up to 5)</label>
+                    <div class="flex flex-wrap gap-2" id="tag-options">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+                
+                <!-- Server Details -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-2">Minecraft Version</label>
+                        <input type="text" id="mc-version" placeholder="e.g., 1.20.1"
+                               class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-2">Discord Link (Optional)</label>
+                        <input type="url" id="discord-link" placeholder="https://discord.gg/..."
+                               class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+                
+                <!-- Submit -->
+                <div class="pt-4 border-t border-slate-700">
+                    <button type="submit" id="submit-smp-btn" class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition flex items-center justify-center gap-2">
+                        <span>Upload SMP</span>
+                        <div id="submit-spinner" class="loading-spinner hidden"></div>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div class="modal-content bg-slate-800 rounded-2xl max-w-md w-full border border-slate-700">
+            <div class="p-6 border-b border-slate-700 flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-white">Login Required</h2>
+                <button onclick="closeModal('login-modal')" class="text-slate-400 hover:text-white transition">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 space-y-6">
+                <div class="bg-blue-900/30 border border-blue-700/50 rounded-lg p-4 flex gap-3">
+                    <i class="fas fa-shield-alt text-blue-400 mt-1"></i>
+                    <div>
+                        <h4 class="text-blue-400 font-semibold mb-1">Age Verification Required</h4>
+                        <p class="text-sm text-slate-300">You must be logged in to upload SMPs or view age-restricted content. We verify ages to keep our community safe.</p>
+                    </div>
+                </div>
+                
+                <form id="login-form" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-2">Email</label>
+                        <input type="email" required
+                               class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                               placeholder="you@example.com">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-2">Password</label>
+                        <input type="password" required
+                               class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                               placeholder="••••••••">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-2">Date of Birth</label>
+                        <input type="date" required id="dob-input"
+                               class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                    
+                    <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition">
+                        Login / Register
+                    </button>
+                </form>
+                
+                <p class="text-center text-sm text-slate-500">
+                    By logging in, you agree to our Terms of Service and Privacy Policy
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SMP Detail Modal -->
+    <div id="detail-modal" class="modal fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div class="modal-content bg-slate-800 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-slate-700">
+            <div class="relative">
+                <img id="detail-image" src="" class="w-full h-64 object-cover" alt="SMP Banner">
+                <button onclick="closeModal('detail-modal')" class="absolute top-4 right-4 w-10 h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition backdrop-blur-sm">
+                    <i class="fas fa-times"></i>
+                </button>
+                <div id="detail-age-badge" class="absolute top-4 left-4"></div>
+            </div>
+            
+            <div class="p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h2 id="detail-title" class="text-3xl font-bold text-white mb-2"></h2>
+                        <div class="flex items-center gap-4 text-sm text-slate-400">
+                            <span id="detail-owner"><i class="fas fa-user mr-2"></i></span>
+                            <span id="detail-date"><i class="fas fa-calendar mr-2"></i></span>
+                            <span id="detail-version"><i class="fas fa-code-branch mr-2"></i></span>
+                        </div>
+                    </div>
+                    <div id="detail-tags" class="flex flex-wrap gap-2 justify-end max-w-xs"></div>
+                </div>
+                
+                <div class="prose prose-invert max-w-none mb-6">
+                    <p id="detail-description" class="text-slate-300 leading-relaxed"></p>
+                </div>
+                
+                <div class="flex flex-wrap gap-3 pt-6 border-t border-slate-700">
+                    <button id="detail-join-btn" class="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition flex items-center justify-center gap-2">
+                        <i class="fas fa-gamepad"></i>
+                        Join Server
+                    </button>
+                    <button id="detail-discord-btn" class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold transition flex items-center justify-center gap-2">
+                        <i class="fab fa-discord"></i>
+                        Discord
+                    </button>
+                    <button onclick="reportSMP()" class="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-semibold transition">
+                        <i class="fas fa-flag"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Age Restriction Modal -->
+    <div id="age-restriction-modal" class="modal fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div class="modal-content bg-slate-800 rounded-2xl max-w-md w-full border border-slate-700 p-6 text-center">
+            <div class="w-16 h-16 bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-ban text-red-400 text-2xl"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-white mb-2">Age Restricted Content</h2>
+            <p class="text-slate-300 mb-6">This server is rated 18+ (Mature). You must be 18 years or older to view this content.</p>
+            <button onclick="closeModal('age-restriction-modal')" class="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-semibold transition">
+                Go Back
+            </button>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-slate-800 border border-slate-700 text-white px-6 py-4 rounded-xl shadow-2xl transform translate-y-20 opacity-0 transition-all duration-300 z-50 flex items-center gap-3">
+        <i id="toast-icon" class="fas fa-check-circle text-green-400"></i>
+        <span id="toast-message">Notification</span>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 border-t border-slate-800 py-12 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div class="col-span-1 md:col-span-2">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-cube text-white"></i>
+                        </div>
+                        <span class="text-xl font-bold text-white">SMP<span class="text-blue-400">Finder</span></span>
+                    </div>
+                    <p class="text-slate-400 mb-4 max-w-md">
+                        The premier platform for discovering and sharing Minecraft Survival Multiplayer servers. Join our growing community of players and server owners.
+                    </p>
+                </div>
+                
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Quick Links</h4>
+                    <ul class="space-y-2 text-slate-400" id="footer-links">
+                        <!-- Populated by JS -->
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Legal</h4>
+                    <ul class="space-y-2 text-slate-400">
+                        <li><a href="#" class="hover:text-white transition">Privacy Policy</a></li>
+                        <li><a href="#" class="hover:text-white transition">Terms of Service</a></li>
+                        <li><a href="#" class="hover:text-white transition">Content Guidelines</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t border-slate-800 mt-8 pt-8 text-center text-slate-500 text-sm">
+                <p>&copy; 2024 SMP Finder. Not affiliated with Mojang Studios or Microsoft.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Data Layer
+        const navigationItems = [
+            { "label": "Browse", "href": "#browse-section", "icon": "fa-compass" },
+            { "label": "Upload", "href": "#", "action": "openUpload", "icon": "fa-upload" },
+            { "label": "About", "href": "#", "action": "showAbout", "icon": "fa-info-circle" }
+        ];
+        
+        const ageFilters = [
+            { "value": "all", "label": "All Ages", "color": "bg-slate-700" },
+            { "value": "e", "label": "Everyone", "color": "bg-green-600" },
+            { "value": "teen", "label": "Teen (13+)", "color": "bg-yellow-600" },
+            { "value": "mature", "label": "Mature (18+)", "color": "bg-red-600" }
+        ];
+        
+        const availableTags = [
+            "Vanilla", "Modded", "PvP", "PvE", "Roleplay", "Economy", "SMP", "Hardcore", 
+            "Whitelisted", "Public", "Java", "Bedrock", "Crossplay", "Lore", "Plugins", 
+            "Datapacks", "Hermitcraft-like", "Technical", "Building", "Community"
+        ];
+        
+        const ageOptions = [
+            { "value": "e", "label": "Everyone", "desc": "All ages welcome", "color": "green" },
+            { "value": "teen", "label": "Teen", "desc": "Ages 13+", "color": "yellow" },
+            { "value": "mature", "label": "Mature", "desc": "Ages 18+", "color": "red" }
+        ];
+        
+        const footerLinks = [
+            { "label": "Browse SMPs", "href": "#browse-section" },
+            { "label": "Upload SMP", "action": "openUpload" },
+            { "label": "Guidelines", "action": "showGuidelines" },
+            { "label": "Contact", "action": "showContact" }
+        ];
+        
+        // Sample SMP Data
+        let smpData = [
+            {
+                "id": 1,
+                "name": "CrystalCraft SMP",
+                "description": "A vanilla survival server focused on community building and mega projects. We have an active shopping district and regular events. Looking for dedicated players who love to build and collaborate!",
+                "image": "https://picsum.photos/400/300?random=1",
+                "ageRating": "teen",
+                "tags": ["Vanilla", "SMP", "Java", "Community"],
+                "owner": "CrystalAdmin",
+                "dateCreated": "2024-01-15",
+                "version": "1.20.1",
+                "discord": "https://discord.gg/example",
+                "playerCount": 45
+            },
+            {
+                "id": 2,
+                "name": "BlockHaven Network",
+                "description": "Family-friendly server with custom plugins and minigames. Perfect for players of all skill levels. We have anti-grief protection and a helpful staff team.",
+                "image": "https://picsum.photos/400/300?random=2",
+                "ageRating": "e",
+                "tags": ["Plugins", "PvE", "Economy", "Family-friendly"],
+                "owner": "BlockMaster",
+                "dateCreated": "2023-11-20",
+                "version": "1.19.4",
+                "discord": null,
+                "playerCount": 120
+            },
+            {
+                "id": 3,
+                "name": "Redstone Republic",
+                "description": "Technical Minecraft server for advanced players. We push the game to its limits with complex redstone contraptions and efficient farms. Must have technical knowledge.",
+                "image": "https://picsum.photos/400/300?random=3",
+                "ageRating": "mature",
+                "tags": ["Technical", "Java", "Hardcore", "Vanilla"],
+                "owner": "RedstoneGod",
+                "dateCreated": "2024-02-01",
+                "version": "1.20.4",
+                "discord": "https://discord.gg/redstone",
+                "playerCount": 25
+            },
+            {
+                "id": 4,
+                "name": "Fantasy Realms RPG",
+                "description": "Immersive roleplay server with custom races, classes, and magic system. Create your character and forge your destiny in our vast custom world.",
+                "image": "https://picsum.photos/400/300?random=4",
+                "ageRating": "teen",
+                "tags": ["Roleplay", "Modded", "PvE", "Lore"],
+                "owner": "DungeonMaster",
+                "dateCreated": "2024-01-28",
+                "version": "1.20.1",
+                "discord": "https://discord.gg/fantasy",
+                "playerCount": 60
+            },
+            {
+                "id": 5,
+                "name": "Skyblock Odyssey",
+                "description": "Classic skyblock experience with a twist. Complete challenges, trade with others, and expand your island to greatness. Weekly competitions with prizes!",
+                "image": "https://picsum.photos/400/300?random=5",
+                "ageRating": "e",
+                "tags": ["PvE", "Economy", "Plugins", "Crossplay"],
+                "owner": "SkyKing",
+                "dateCreated": "2023-12-10",
+                "version": "1.20.2",
+                "discord": null,
+                "playerCount": 85
+            },
+            {
+                "id": 6,
+                "name": "Anarchy Unlimited",
+                "description": "No rules, no admins, pure chaos. This is a true anarchy server where anything goes. Griefing, hacking, and PvP are allowed. Enter at your own risk!",
+                "image": "https://picsum.photos/400/300?random=6",
+                "ageRating": "mature",
+                "tags": ["PvP", "Anarchy", "Java", "Hardcore"],
+                "owner": "ChaosLord",
+                "dateCreated": "2023-08-15",
+                "version": "1.20.1",
+                "discord": null,
+                "playerCount": 200
+            }
+        ];
+        
+        // State
+        let currentUser = null;
+        let selectedAgeFilter = "all";
+        let selectedTags = [];
+        let currentSearch = "";
+        let uploadedImageData = null;
+        
+        // Helper function to check if user can view mature content
+        function canViewMatureContent() {
+            if (!currentUser) return false;
+            return currentUser.age >= 18;
+        }
+        
+        // Helper function to check if content should be visible to user
+        function isContentVisible(ageRating) {
+            if (ageRating !== "mature") return true;
+            return canViewMatureContent();
+        }
+        
+        // Render Functions
+        function renderNavItems() {
+            const navContainer = document.getElementById("nav-links");
+            const html = navigationItems.map(item => {
+                if (item.action) {
+                    return `<a href="#" onclick="handleNavAction('${item.action}'); return false;" class="text-slate-300 hover:text-white transition flex items-center gap-2">
+                        <i class="fas ${item.icon}"></i>${item.label}
+                    </a>`;
+                }
+                return `<a href="${item.href}" class="text-slate-300 hover:text-white transition flex items-center gap-2">
+                    <i class="fas ${item.icon}"></i>${item.label}
+                </a>`;
+            }).join("");
+            navContainer.innerHTML = html;
+        }
+        
+        function renderAuthSection() {
+            const authContainer = document.getElementById("auth-section");
+            if (currentUser) {
+                authContainer.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="text-right hidden sm:block">
+                            <p class="text-white font-medium text-sm">${currentUser.username}</p>
+                            <p class="text-slate-400 text-xs">Age: ${currentUser.age}</p>
+                        </div>
+                        <button onclick="logout()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition">
+                            Logout
+                        </button>
+                    </div>
+                `;
+            } else {
+                authContainer.innerHTML = `
+                    <button onclick="openModal('login-modal')" class="px-4 py-2 text-slate-300 hover:text-white transition text-sm font-medium">
+                        Login
+                    </button>
+                    <button onclick="openModal('login-modal')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition">
+                        Sign Up
+                    </button>
+                `;
+            }
+            updateAgeWarningBanner();
+        }
+        
+        function updateAgeWarningBanner() {
+            const banner = document.getElementById("age-warning-banner");
+            if (currentUser && currentUser.age < 18) {
+                banner.classList.remove("hidden");
+            } else {
+                banner.classList.add("hidden");
+            }
+        }
+        
+        function renderAgeFilters() {
+            const container = document.getElementById("age-filters");
+            // If user is under 18, don't show the mature filter option
+            const availableFilters = ageFilters.filter(filter => {
+                if (filter.value === "mature" && currentUser && currentUser.age < 18) return false;
+                return true;
+            });
+            
+            const html = availableFilters.map(filter => `
+                <button onclick="setAgeFilter('${filter.value}')" 
+                        class="px-4 py-2 rounded-lg font-medium text-sm transition ${selectedAgeFilter === filter.value ? filter.color + ' text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}">
+                    ${filter.label}
+                </button>
+            `).join("");
+            container.innerHTML = html;
+        }
+        
+        function renderTagFilters() {
+            const container = document.getElementById("tag-filters");
+            const html = availableTags.map(tag => `
+                <button onclick="toggleTag('${tag}')" 
+                        class="px-3 py-1 rounded-full text-sm transition border ${selectedTags.includes(tag) ? 'bg-blue-600 border-blue-600 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500'}">
+                    ${tag}
+                </button>
+            `).join("");
+            container.innerHTML = html;
+        }
+        
+        function renderAgeOptions() {
+            const container = document.getElementById("age-options");
+            const html = ageOptions.map(age => `
+                <div>
+                    <input type="radio" name="age-rating" id="age-${age.value}" value="${age.value}" class="hidden peer" required>
+                    <label for="age-${age.value}" class="block p-4 rounded-lg border border-slate-700 bg-slate-900 cursor-pointer hover:bg-slate-800 peer-checked:border-${age.color}-500 peer-checked:bg-${age.color}-900/20 transition text-center">
+                        <div class="font-semibold text-white mb-1">${age.label}</div>
+                        <div class="text-xs text-slate-400">${age.desc}</div>
+                    </label>
+                </div>
+            `).join("");
+            container.innerHTML = html;
+        }
+        
+        function renderTagOptions() {
+            const container = document.getElementById("tag-options");
+            const html = availableTags.map(tag => `
+                <div>
+                    <input type="checkbox" id="tag-${tag}" value="${tag}" class="tag-checkbox hidden" onchange="updateTagSelection(this)">
+                    <label for="tag-${tag}" class="px-3 py-1 rounded-full border border-slate-700 bg-slate-900 text-slate-400 cursor-pointer hover:bg-slate-800 transition select-none text-sm">
+                        ${tag}
+                    </label>
+                </div>
+            `).join("");
+            container.innerHTML = html;
+        }
+        
+        function renderSMPGrid() {
+            const grid = document.getElementById("smp-grid");
+            const emptyState = document.getElementById("empty-state");
+            const resultsCount = document.getElementById("results-count");
+            
+            let filtered = smpData.filter(smp => {
+                // Age filter - hide mature content from under-18 users
+                if (smp.ageRating === "mature" && !canViewMatureContent()) return false;
+                
+                // Selected age filter
+                if (selectedAgeFilter !== "all" && smp.ageRating !== selectedAgeFilter) return false;
+                
+                // Tag filter
+                if (selectedTags.length > 0 && !selectedTags.some(tag => smp.tags.includes(tag))) return false;
+                
+                // Search
+                if (currentSearch) {
+                    const searchLower = currentSearch.toLowerCase();
+                    return smp.name.toLowerCase().includes(searchLower) || 
+                           smp.description.toLowerCase().includes(searchLower) ||
+                           smp.tags.some(tag => tag.toLowerCase().includes(searchLower));
+                }
+                
+                return true;
+            });
+            
+            // Sort
+            const sortValue = document.getElementById("sort-select").value;
+            if (sortValue === "newest") {
+                filtered.sort((a, b) => new Date(b.dateCreated) - new Date(a.dateCreated));
+            } else if (sortValue === "oldest") {
+                filtered.sort((a, b) => new Date(a.dateCreated) - new Date(b.dateCreated));
+            } else if (sortValue === "players") {
+                filtered.sort((a, b) => b.playerCount - a.playerCount);
+            }
+            
+            resultsCount.textContent = `Showing ${filtered.length} SMP${filtered.length !== 1 ? 's' : ''}`;
+            
+            if (filtered.length === 0) {
+                grid.innerHTML = "";
+                emptyState.classList.remove("hidden");
+                return;
+            }
+            
+            emptyState.classList.add("hidden");
+            
+            const html = filtered.map(smp => {
+                const ageClass = `age-${smp.ageRating}`;
+                const ageLabel = ageFilters.find(a => a.value === smp.ageRating)?.label || smp.ageRating;
+                
+                return `
+                    <article class="bg-slate-800 rounded-xl overflow-hidden border border-slate-700 card-hover cursor-pointer group" onclick="openSMPDetail(${smp.id})">
+                        <div class="relative h-48 overflow-hidden">
+                            <img src="${smp.image}" alt="${smp.name}" class="w-full h-full object-cover transition group-hover:scale-105" loading="lazy">
+                            <div class="absolute top-3 left-3">
+                                <span class="age-badge ${ageClass}">${ageLabel}</span>
+                            </div>
+                            <div class="absolute bottom-3 right-3 bg-black/70 backdrop-blur-sm px-2 py-1 rounded text-xs text-white">
+                                <i class="fas fa-users mr-1"></i>${smp.playerCount}
+                            </div>
+                        </div>
+                        <div class="p-5">
+                            <h3 class="text-xl font-bold text-white mb-2 group-hover:text-blue-400 transition">${smp.name}</h3>
+                            <p class="text-slate-400 text-sm mb-4 line-clamp-2">${smp.description}</p>
+                            <div class="flex flex-wrap gap-2">
+                                ${smp.tags.slice(0, 3).map(tag => `<span class="px-2 py-1 bg-slate-700 rounded text-xs text-slate-300">${tag}</span>`).join("")}
+                                ${smp.tags.length > 3 ? `<span class="px-2 py-1 bg-slate-700 rounded text-xs text-slate-300">+${smp.tags.length - 3}</span>` : ""}
+                            </div>
+                            <div class="mt-4 pt-4 border-t border-slate-700 flex justify-between items-center text-sm text-slate-500">
+                                <span>${smp.version}</span>
+                                <span>${formatDate(smp.dateCreated)}</span>
+                            </div>
+                        </div>
+                    </article>
+                `;
+            }).join("");
+            
+            grid.innerHTML = html;
+        }
+        
+        function renderFooterLinks() {
+            const container = document.getElementById("footer-links");
+            const html = footerLinks.map(link => {
+                if (link.action) {
+                    return `<li><a href="#" onclick="handleNavAction('${link.action}'); return false;" class="hover:text-white transition">${link.label}</a></li>`;
+                }
+                return `<li><a href="${link.href}" class="hover:text-white transition">${link.label}</a></li>`;
+            }).join("");
+            container.innerHTML = html;
+        }
+        
+        // Helper Functions
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+        }
+        
+        function setAgeFilter(value) {
+            selectedAgeFilter = value;
+            renderAgeFilters();
+            renderSMPGrid();
+        }
+        
+        function toggleTag(tag) {
+            if (selectedTags.includes(tag)) {
+                selectedTags = selectedTags.filter(t => t !== tag);
+            } else {
+                selectedTags.push(tag);
+            }
+            renderTagFilters();
+            renderSMPGrid();
+        }
+        
+        function updateTagSelection(checkbox) {
+            const selected = document.querySelectorAll(".tag-checkbox:checked");
+            if (selected.length > 5) {
+                checkbox.checked = false;
+                showToast("Maximum 5 tags allowed", "error");
+            }
+        }
+        
+        function handleNavAction(action) {
+            if (action === "openUpload") {
+                if (!currentUser) {
+                    openModal("login-modal");
+                    showToast("Please login to upload an SMP", "error");
+                } else {
+                    openModal("upload-modal");
+                }
+            } else if (action === "showAbout") {
+                showToast("About: SMP Finder v1.0 - Find your perfect Minecraft community!", "info");
+            } else if (action === "showGuidelines") {
+                showToast("Content Guidelines: Keep it family-friendly and Minecraft-related", "info");
+            } else if (action === "showContact") {
+                showToast("Contact us at support@smpfinder.com", "info");
+            }
+        }
+        
+        // Modal Functions
+        function openModal(modalId) {
+            if (modalId === "upload-modal" && !currentUser) {
+                openModal("login-modal");
+                return;
+            }
+            document.getElementById(modalId).classList.add("active");
+            document.body.style.overflow = "hidden";
+        }
+        
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove("active");
+            document.body.style.overflow = "";
+            if (modalId === "upload-modal") {
+                resetUploadForm();
+            }
+        }
+        
+        function openSMPDetail(id) {
+            const smp = smpData.find(s => s.id === id);
+            if (!smp) return;
+            
+            // Check age restriction - block under 18 from viewing mature
+            if (smp.ageRating === "mature" && !canViewMatureContent()) {
+                openModal("age-restriction-modal");
+                return;
+            }
+            
+            document.getElementById("detail-image").src = smp.image;
+            document.getElementById("detail-title").textContent = smp.name;
+            document.getElementById("detail-description").textContent = smp.description;
+            document.getElementById("detail-owner").innerHTML = `<i class="fas fa-user mr-2"></i>Owner: ${smp.owner}`;
+            document.getElementById("detail-date").innerHTML = `<i class="fas fa-calendar mr-2"></i>Created: ${formatDate(smp.dateCreated)}`;
+            document.getElementById("detail-version").innerHTML = `<i class="fas fa-code-branch mr-2"></i>${smp.version}`;
+            
+            const ageClass = `age-${smp.ageRating}`;
+            const ageLabel = ageFilters.find(a => a.value === smp.ageRating)?.label || smp.ageRating;
+            document.getElementById("detail-age-badge").innerHTML = `<span class="age-badge ${ageClass}">${ageLabel}</span>`;
+            
+            const tagsHtml = smp.tags.map(tag => `<span class="px-3 py-1 bg-slate-700 rounded-full text-sm text-slate-300">${tag}</span>`).join("");
+            document.getElementById("detail-tags").innerHTML = tagsHtml;
+            
+            // Discord button visibility
+            const discordBtn = document.getElementById("detail-discord-btn");
+            if (smp.discord) {
+                discordBtn.style.display = "flex";
+                discordBtn.onclick = () => window.open(smp.discord, "_blank");
+            } else {
+                discordBtn.style.display = "none";
+            }
+            
+            openModal("detail-modal");
+        }
+        
+        // Image Upload & Moderation
+        function handleImagePreview(input) {
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    uploadedImageData = e.target.result;
+                    document.getElementById("image-preview").src = uploadedImageData;
+                    
+                    // Simulate content moderation
+                    const statusDiv = document.getElementById("moderation-status");
+                    statusDiv.classList.remove("hidden");
+                    statusDiv.innerHTML = '<div class="loading-spinner"></div><span class="text-slate-400">Checking image...</span>';
+                    
+                    setTimeout(() => {
+                        // Simulate approval (randomly reject 10% of images for demo)
+                        if (Math.random() > 0.1) {
+                            statusDiv.innerHTML = '<i class="fas fa-check-circle text-green-400"></i><span class="text-green-400">Image approved</span>';
+                        } else {
+                            statusDiv.innerHTML = '<i class="fas fa-times-circle text-red-400"></i><span class="text-red-400">Image rejected: Inappropriate content detected</span>';
+                            uploadedImageData = null;
+                            document.getElementById("image-preview").src = "https://picsum.photos/400/200?random=0";
+                        }
+                    }, 1500);
+                };
+                
+                reader.readAsDataURL(file);
+            }
+        }
+        
+        function resetUploadForm() {
+            document.getElementById("upload-form").reset();
+            document.getElementById("image-preview").src = "https://picsum.photos/400/200?random=0";
+            document.getElementById("moderation-status").classList.add("hidden");
+            document.getElementById("char-count").textContent = "0/500";
+            uploadedImageData = null;
+        }
+        
+        // Form Submissions
+        document.getElementById("upload-form").addEventListener("submit", function(e) {
+            e.preventDefault();
+            
+            if (!uploadedImageData) {
+                showToast("Please upload an image first", "error");
+                return;
+            }
+            
+            const btn = document.getElementById("submit-smp-btn");
+            const spinner = document.getElementById("submit-spinner");
+            const btnText = btn.querySelector("span");
+            
+            btn.disabled = true;
+            spinner.classList.remove("hidden");
+            btnText.textContent = "Uploading...";
+            
+            // Gather form data
+            const name = document.getElementById("smp-name").value;
+            const description = document.getElementById("smp-description").value;
+            const ageRating = document.querySelector("input[name='age-rating']:checked")?.value || "teen";
+            
+            // Check if trying to upload mature content while under 18
+            if (ageRating === "mature" && currentUser.age < 18) {
+                showToast("You must be 18+ to upload mature servers", "error");
+                btn.disabled = false;
+                spinner.classList.add("hidden");
+                btnText.textContent = "Upload SMP";
+                return;
+            }
+            
+            const version = document.getElementById("mc-version").value || "1.20.1";
+            const discord = document.getElementById("discord-link").value;
+            
+            const selectedTags = Array.from(document.querySelectorAll(".tag-checkbox:checked")).map(cb => cb.value);
+            
+            // Simulate upload delay
+            setTimeout(() => {
+                const newSMP = {
+                    "id": smpData.length + 1,
+                    "name": name,
+                    "description": description,
+                    "image": uploadedImageData,
+                    "ageRating": ageRating,
+                    "tags": selectedTags.length > 0 ? selectedTags : ["SMP"],
+                    "owner": currentUser.username,
+                    "dateCreated": new Date().toISOString().split("T")[0],
+                    "version": version,
+                    "discord": discord || null,
+                    "playerCount": 0
+                };
+                
+                smpData.unshift(newSMP);
+                renderSMPGrid();
+                closeModal("upload-modal");
+                showToast("SMP uploaded successfully!", "success");
+                
+                btn.disabled = false;
+                spinner.classList.add("hidden");
+                btnText.textContent = "Upload SMP";
+            }, 2000);
+        });
+        
+        document.getElementById("login-form").addEventListener("submit", function(e) {
+            e.preventDefault();
+            
+            const dob = document.getElementById("dob-input").value;
+            if (!dob) {
+                showToast("Please enter your date of birth", "error");
+                return;
+            }
+            
+            const birthDate = new Date(dob);
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+            
+            if (age < 13) {
+                showToast("You must be at least 13 years old to use this platform", "error");
+                return;
+            }
+            
+            // Simulate login
+            currentUser = {
+                username: "Player" + Math.floor(Math.random() * 10000),
+                age: age,
+                email: "user@example.com"
+            };
+            
+            renderAuthSection();
+            renderAgeFilters(); // Re-render to remove mature filter if under 18
+            renderSMPGrid(); // Re-render to show/hide mature content
+            closeModal("login-modal");
+            showToast(`Welcome, ${currentUser.username}!`, "success");
+            
+            // Update hero button
+            document.getElementById("hero-upload-btn").onclick = function() { openModal("upload-modal"); };
+        });
+        
+        // Search functionality
+        document.getElementById("search-input").addEventListener("input", function(e) {
+            currentSearch = e.target.value;
+            renderSMPGrid();
+        });
+        
+        document.getElementById("sort-select").addEventListener("change", function() {
+            renderSMPGrid();
+        });
+        
+        // Character counter
+        document.getElementById("smp-description").addEventListener("input", function(e) {
+            document.getElementById("char-count").textContent = `${e.target.value.length}/500`;
+        });
+        
+        // Toast notification
+        function showToast(message, type = "success") {
+            const toast = document.getElementById("toast");
+            const toastMessage = document.getElementById("toast-message");
+            const toastIcon = document.getElementById("toast-icon");
+            
+            toastMessage.textContent = message;
+            
+            if (type === "error") {
+                toastIcon.className = "fas fa-times-circle text-red-400";
+            } else if (type === "info") {
+                toastIcon.className = "fas fa-info-circle text-blue-400";
+            } else {
+                toastIcon.className = "fas fa-check-circle text-green-400";
+            }
+            
+            toast.classList.remove("translate-y-20", "opacity-0");
+            
+            setTimeout(() => {
+                toast.classList.add("translate-y-20", "opacity-0");
+            }, 3000);
+        }
+        
+        function logout() {
+            currentUser = null;
+            selectedAgeFilter = "all"; // Reset filter on logout
+            renderAuthSection();
+            renderAgeFilters(); // Re-render to show mature filter option again
+            renderSMPGrid(); // Re-render to hide mature content
+            showToast("Logged out successfully", "success");
+            document.getElementById("hero-upload-btn").onclick = function() { handleNavAction("openUpload"); };
+        }
+        
+        function scrollToBrowse() {
+            document.getElementById("browse-section").scrollIntoView({ behavior: "smooth" });
+        }
+        
+        function reportSMP() {
+            showToast("Report submitted. Thank you for keeping our community safe!", "success");
+            closeModal("detail-modal");
+        }
+        
+        // Close modals on outside click
+        document.querySelectorAll(".modal").forEach(modal => {
+            modal.addEventListener("click", function(e) {
+                if (e.target === this) {
+                    closeModal(this.id);
+                }
+            });
+        });
+        
+        // Initialize
+        document.addEventListener("DOMContentLoaded", function() {
+            renderNavItems();
+            renderAuthSection();
+            renderAgeFilters();
+            renderTagFilters();
+            renderAgeOptions();
+            renderTagOptions();
+            renderSMPGrid();
+            renderFooterLinks();
+        });
+    </script>
+</body>
+</html>
